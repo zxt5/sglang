@@ -437,9 +437,20 @@ class Scheduler(
                 dp_rank=dp_rank,
             )
         elif self.spec_algorithm.is_ngram():
-            from sglang.srt.speculative.ngram_worker import NGRAMWorker
+            # from sglang.srt.speculative.ngram_worker import NGRAMWorker
 
-            self.draft_worker = NGRAMWorker(
+            # self.draft_worker = NGRAMWorker(
+            #     gpu_id=gpu_id,
+            #     tp_rank=tp_rank,
+            #     moe_ep_rank=moe_ep_rank,
+            #     server_args=server_args,
+            #     nccl_port=port_args.nccl_port,
+            #     target_worker=self.tp_worker,
+            #     dp_rank=dp_rank,
+            # )
+            from sglang.srt.speculative.lsp_worker import LSPWorker
+
+            self.draft_worker = LSPWorker(
                 gpu_id=gpu_id,
                 tp_rank=tp_rank,
                 moe_ep_rank=moe_ep_rank,
@@ -448,6 +459,20 @@ class Scheduler(
                 target_worker=self.tp_worker,
                 dp_rank=dp_rank,
             )
+
+        elif self.spec_algorithm.is_lsp():
+            from sglang.srt.speculative.lsp_worker import LSPWorker
+
+            self.draft_worker = LSPWorker(
+                gpu_id=gpu_id,
+                tp_rank=tp_rank,
+                moe_ep_rank=moe_ep_rank,
+                server_args=server_args,
+                nccl_port=port_args.nccl_port,
+                target_worker=self.tp_worker,
+                dp_rank=dp_rank,
+            )
+
         else:
             self.draft_worker = None
 

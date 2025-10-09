@@ -11,6 +11,7 @@ class SpeculativeAlgorithm(IntEnum):
     EAGLE3 = auto()
     STANDALONE = auto()
     NGRAM = auto()
+    LSP = auto()
 
     def is_none(self):
         return self == SpeculativeAlgorithm.NONE
@@ -27,6 +28,9 @@ class SpeculativeAlgorithm(IntEnum):
     def is_ngram(self):
         return self == SpeculativeAlgorithm.NGRAM
 
+    def is_lsp(self):
+        return self == SpeculativeAlgorithm.LSP
+
     @staticmethod
     def from_string(name: str):
         name_map = {
@@ -34,6 +38,7 @@ class SpeculativeAlgorithm(IntEnum):
             "EAGLE3": SpeculativeAlgorithm.EAGLE3,
             "STANDALONE": SpeculativeAlgorithm.STANDALONE,
             "NGRAM": SpeculativeAlgorithm.NGRAM,
+            "LSP": SpeculativeAlgorithm.LSP,
             None: SpeculativeAlgorithm.NONE,
         }
         if name is not None:
@@ -47,6 +52,7 @@ class SpecInputType(IntEnum):
     EAGLE_DRAFT = auto()
     EAGLE_VERIFY = auto()
     NGRAM_VERIFY = auto()
+    LSP_VERIFY = auto()
 
 
 class SpecInput(ABC):
@@ -62,6 +68,7 @@ class SpecInput(ABC):
         return self.spec_input_type in {
             SpecInputType.EAGLE_VERIFY,
             SpecInputType.NGRAM_VERIFY,
+            SpecInputType.LSP_VERIFY,
         }
 
     @abstractmethod
