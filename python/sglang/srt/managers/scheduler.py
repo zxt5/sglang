@@ -437,7 +437,8 @@ class Scheduler(
                 dp_rank=dp_rank,
             )
         elif self.spec_algorithm.is_ngram():
-            # from sglang.srt.speculative.ngram_worker import NGRAMWorker
+            from sglang.srt.speculative.ngram_worker import NGRAMWorker
+            from sglang.srt.speculative.lsp_worker import LSPWorker
 
             # self.draft_worker = NGRAMWorker(
             #     gpu_id=gpu_id,
@@ -448,7 +449,6 @@ class Scheduler(
             #     target_worker=self.tp_worker,
             #     dp_rank=dp_rank,
             # )
-            from sglang.srt.speculative.lsp_worker import LSPWorker
 
             self.draft_worker = LSPWorker(
                 gpu_id=gpu_id,

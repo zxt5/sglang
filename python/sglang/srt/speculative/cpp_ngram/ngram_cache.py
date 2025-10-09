@@ -55,6 +55,11 @@ class NgramCache:
         self.cache.reset()
 
     def batch_get(self, batch_tokens: List[List[int]]) -> Tuple[np.ndarray, np.ndarray]:
+
+        print("No matter what speculative algorithm, the batch_context_tokens should be the same")
+        print("batch_context_tokens: ", batch_tokens)
+
+
         result = self.cache.batchMatch(batch_tokens)
         return np.array(result.token), np.array(result.mask)
 

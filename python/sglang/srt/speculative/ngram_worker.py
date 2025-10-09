@@ -59,6 +59,11 @@ class NGRAMWorker:
         self.ngram_cache.reset()
 
     def _efficient_concat_last_n(self, seq1: List[int], seq2: List[int], n: int):
+
+        print("seq1:", seq1)
+        print("seq2:", seq2)
+        print("n:", n)
+
         seq2_len = len(seq2)
         if seq2_len >= n:
             return seq2[-n:]
@@ -124,10 +129,14 @@ class NGRAMWorker:
         self.ngram_cache.synchronize()
         batch_tokens = []
         for req in batch.reqs:
+            print("request.origin_input_text", req.origin_input_text)
             check_token = self._efficient_concat_last_n(
                 req.origin_input_ids, req.output_ids, self.max_match_window_size
             )
             batch_tokens.append(check_token)
+
+        print("batch_tokens", batch_tokens)
+
         req_drafts, mask = self.ngram_cache.batch_get(batch_tokens)
         total_draft_token_num = len(req_drafts)
 
@@ -192,6 +201,14 @@ class NGRAMWorker:
             retrive_next_sibling,
             self.draft_token_num,
         )
+        print("===batch===")
+        print("draft_token", batch.spec_info.draft_token)
+        print("tree_mask", batch.spec_info.custom_mask)
+        print("positions", batch.spec_info.positions)
+        print("retrive_index", batch.spec_info.retrive_index)
+        print("retrive_next_token", batch.spec_info.retrive_next_token)
+        print("retrive_next_sibling", batch.spec_info.retrive_next_sibling)
+        print("draft_token_num", batch.spec_info.draft_token_num)
         batch.spec_info.prepare_for_verify(batch, self.page_size)
 
     def _update_ngram_cache(self, batch: ScheduleBatch):
@@ -237,6 +254,12 @@ class NGRAMWorker:
                 batch_result.next_token_ids,
                 batch_result.can_run_cuda_graph,
             )
+
+        print("forward_batch_generation")
+        print("logits_output", logits_output)
+        print("next_token_ids", next_token_ids)
+        print("num_accepted_tokens", num_accepted_tokens)
+        print("can_run_cuda_graph", can_run_cuda_graph)
 
         return GenerationBatchResult(
             logits_output=logits_output,
