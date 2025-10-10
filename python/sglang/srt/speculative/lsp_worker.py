@@ -84,18 +84,17 @@ class LSPWorker:
                 logger.warning(f"LSP provider reset() raised: {e}")
 
     @staticmethod
-    def _efficient_concat_last_n(seq1: List[int], seq2: List[int], n: int) -> List[int]:
+    def get_context_tokens(seq1: List[int], seq2: List[int], max_match_window_size: int) -> List[int]:
 
-        print("seq1:", seq1)
-        print("seq2:", seq2)
-        print("n:", n)
+        # zxt: feel free to change this function for LSP spec
+        return seq1 + seq2
         
-        seq2_len = len(seq2)
-        if seq2_len >= n:
-            return seq2[-n:]
+        # seq2_len = len(seq2)
+        # if seq2_len >= n:
+        #     return seq2[-n:]
 
-        need_from_seq1 = n - seq2_len
-        return seq1[-need_from_seq1:] + seq2
+        # need_from_seq1 = n - seq2_len
+        # return seq1[-need_from_seq1:] + seq2
 
     def _init_preallocated_tensors(self) -> None:
         max_total_drafts = self.max_batch_size * self.draft_token_num
@@ -155,15 +154,11 @@ class LSPWorker:
 
         batch_tokens = []
         for req in batch.reqs:
-            print("request.origin_input_text", req.origin_input_text)
-            check_token = self._efficient_concat_last_n(
+            check_token = self.get_context_tokens(
                 req.origin_input_ids, req.output_ids, self.max_match_window_size
             )
             batch_tokens.append(check_token)
 
-        print("batch_tokens", batch_tokens)
-
-        # core logic: get drafts from provider
         req_drafts, mask = self.lsp_provider.batch_get(batch_tokens, self.draft_token_num)
 
         expected_tokens = bs * self.draft_token_num
@@ -177,9 +172,7 @@ class LSPWorker:
         if mask.dtype != np.bool_:
             mask = mask.astype(np.bool_, copy=False)
 
-        logger.info(f"[LSP] Fake provider active: bs={bs}, draft_token_num={self.draft_token_num}")
-
-        print("prepare_draft_tokens", req_drafts, mask)
+        # logger.info(f"[LSP] Fake provider active: bs={bs}, draft_token_num={self.draft_token_num}")
         
         return req_drafts, mask
 
@@ -212,7 +205,7 @@ class LSPWorker:
             self.draft_token_num,
         )
 
-        # build FULL mask (draft x (seq_len-1 + draft)) if enabled
+        # copied from ngram_worker
         if USE_FULL_MASK:
             tree_mask: List[torch.Tensor] = []
             mask = mask.reshape(
@@ -228,7 +221,6 @@ class LSPWorker:
                 tree_mask.append(req_mask.flatten())
             tree_mask = torch.cat(tree_mask, dim=0)
 
-        # 5) switch to verify mode and attach spec info
         batch.spec_algorithm = SpeculativeAlgorithm.NGRAM
         batch.forward_mode = ForwardMode.TARGET_VERIFY
         batch.spec_info = NgramVerifyInput(
@@ -240,14 +232,7 @@ class LSPWorker:
             retrive_next_sibling,
             self.draft_token_num,
         )
-        print("===batch===")
-        print("draft_token", batch.spec_info.draft_token)
-        print("tree_mask", batch.spec_info.custom_mask)
-        print("positions", batch.spec_info.positions)
-        print("retrive_index", batch.spec_info.retrive_index)
-        print("retrive_next_token", batch.spec_info.retrive_next_token)
-        print("retrive_next_sibling", batch.spec_info.retrive_next_sibling)
-        print("draft_token_num", batch.spec_info.draft_token_num)
+
         batch.spec_info.prepare_for_verify(batch, self.page_size)
 
     def _feedback_to_lsp(self, batch: ScheduleBatch) -> None:
@@ -286,13 +271,6 @@ class LSPWorker:
                 batch_result.next_token_ids,
                 batch_result.can_run_cuda_graph,
             )
-
-
-        print("forward_batch_generation")
-        print("logits_output", logits_output)
-        print("next_token_ids", next_token_ids)
-        print("num_accepted_tokens", num_accepted_tokens)
-        print("can_run_cuda_graph", can_run_cuda_graph)
 
         return GenerationBatchResult(
             logits_output=logits_output,
