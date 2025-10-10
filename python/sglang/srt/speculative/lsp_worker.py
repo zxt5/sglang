@@ -25,7 +25,8 @@ from sglang.srt.speculative.ngram_info import NgramVerifyInput
 from sglang.srt.speculative.spec_info import SpeculativeAlgorithm
 
 
-from sglang.srt.speculative.lsp_provider import LSPDraftProvider, FakeLSPProvider
+from sglang.srt.speculative.lsp_provider import LSPProvider
+
 logger = logging.getLogger(__name__)
 
 USE_FULL_MASK = True  # keep parity with ngram_worker default
@@ -45,11 +46,9 @@ class LSPWorker:
         pad_token_id: Optional[int] = 0,
         max_match_window_size: Optional[int] = None,
     ) -> None:
-
         self.target_model_id = server_args.model_path
         self.target_tokenizer = AutoTokenizer.from_pretrained(self.target_model_id)
 
-    
         self.target_worker = target_worker
         self.model_runner = target_worker.model_runner
         self.tp_rank = tp_rank
@@ -66,12 +65,11 @@ class LSPWorker:
         self.max_batch_size = target_worker.max_running_requests
         self.device = f"cuda:{gpu_id}" if gpu_id >= 0 else "cuda"
 
-        # tok = self.target_worker.tokenizer
-        self.lsp_provider = FakeLSPProvider(
-            pad_token_id=self.target_tokenizer.pad_token_id or 0,
-            encode=self.target_tokenizer.encode,
-        )
         self.pad_token_id = int(pad_token_id or 0)
+        self.lsp_provider = LSPProvider(
+            tokenizer=self.target_tokenizer,
+            pad_token_id=self.pad_token_id,
+        )
 
         self._init_preallocated_tensors()
 
@@ -84,11 +82,12 @@ class LSPWorker:
                 logger.warning(f"LSP provider reset() raised: {e}")
 
     @staticmethod
-    def get_context_tokens(seq1: List[int], seq2: List[int], max_match_window_size: int) -> List[int]:
-
+    def get_context_tokens(
+        seq1: List[int], seq2: List[int], max_match_window_size: int
+    ) -> List[int]:
         # zxt: feel free to change this function for LSP spec
         return seq1 + seq2
-        
+
         # seq2_len = len(seq2)
         # if seq2_len >= n:
         #     return seq2[-n:]
@@ -112,13 +111,13 @@ class LSPWorker:
         )
         self.retrive_next_token = torch.empty(
             (self.max_batch_size, self.draft_token_num),
-            dtype=torch.int64, 
+            dtype=torch.int64,
             device=self.device,
         )
         self.retrive_next_sibling = torch.empty(
             (self.max_batch_size, self.draft_token_num),
             dtype=torch.int64,
-            device=self.device
+            device=self.device,
         )
         self.positions = torch.empty(
             (max_total_drafts,), dtype=torch.int64, device=self.device
@@ -159,21 +158,27 @@ class LSPWorker:
             )
             batch_tokens.append(check_token)
 
-        req_drafts, mask = self.lsp_provider.batch_get(batch_tokens, self.draft_token_num)
+        req_drafts, mask = self.lsp_provider.batch_get(
+            batch_tokens, self.draft_token_num
+        )
 
         expected_tokens = bs * self.draft_token_num
         expected_mask = bs * self.draft_token_num * self.draft_token_num
         assert isinstance(req_drafts, np.ndarray)
         assert isinstance(mask, np.ndarray)
-        assert req_drafts.size == expected_tokens, f"LSP returned {req_drafts.size=}, expected {expected_tokens=}"
-        assert mask.size == expected_mask, f"LSP returned {mask.size=}, expected {expected_mask=}"
+        assert req_drafts.size == expected_tokens, (
+            f"LSP returned {req_drafts.size=}, expected {expected_tokens=}"
+        )
+        assert mask.size == expected_mask, (
+            f"LSP returned {mask.size=}, expected {expected_mask=}"
+        )
         if req_drafts.dtype != np.int64:
             req_drafts = req_drafts.astype(np.int64, copy=False)
         if mask.dtype != np.bool_:
             mask = mask.astype(np.bool_, copy=False)
 
         # logger.info(f"[LSP] Fake provider active: bs={bs}, draft_token_num={self.draft_token_num}")
-        
+
         return req_drafts, mask
 
     # --------------- same prep path as ngram ---------------
@@ -197,10 +202,10 @@ class LSPWorker:
         reconstruct_indices_from_tree_mask(
             tree_mask,
             batch.seq_lens,
-            positions,            # mutable
-            retrive_index,        # mutable
-            retrive_next_token,   # mutable
-            retrive_next_sibling, # mutable
+            positions,  # mutable
+            retrive_index,  # mutable
+            retrive_next_token,  # mutable
+            retrive_next_sibling,  # mutable
             bs,
             self.draft_token_num,
         )
@@ -213,11 +218,11 @@ class LSPWorker:
             )
             for i, req in enumerate(batch.reqs):
                 seq_len = len(req.origin_input_ids) + len(req.output_ids)
-                prefix = torch.ones((self.draft_token_num, seq_len - 1), device=self.device)
+                prefix = torch.ones(
+                    (self.draft_token_num, seq_len - 1), device=self.device
+                )
                 intra = torch.from_numpy(mask[i]).to(self.device)
-                req_mask = torch.cat(
-                    (prefix, intra), dim=1
-                ).to(torch.bool)
+                req_mask = torch.cat((prefix, intra), dim=1).to(torch.bool)
                 tree_mask.append(req_mask.flatten())
             tree_mask = torch.cat(tree_mask, dim=0)
 
@@ -257,6 +262,9 @@ class LSPWorker:
             logits_output, next_token_ids, num_accepted_tokens = verify_input.verify(
                 batch, logits_output, self.page_size
             )
+            # print(f"[LSPWorker] accepted {num_accepted_tokens}/{self.draft_token_num} drafts")
+            # res_tokens = self.target_tokenizer.decode(next_token_ids[0].tolist())
+            # print(f"[LSPWorker] next tokens: {res_tokens}")
 
             self._feedback_to_lsp(batch)
             batch.forward_mode = ForwardMode.DECODE

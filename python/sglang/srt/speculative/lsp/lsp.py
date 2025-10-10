@@ -87,12 +87,11 @@ def add(x0, x1):
     return x
         """.strip()
 
-        client = LanguageClient(initial_code=code)
+        client = LanguageClient(initial_code="")
         await client.start(base_path=Path("."))
+        await client.update_code(code)
 
-        for pos in [
-            Position(line=1, character=12),
-        ]:
+        for pos in [Position(line=1, character=12), None]:
             res = await client.get_completion(pos)
             print([x["newtext"] for x in res])
 
