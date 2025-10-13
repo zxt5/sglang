@@ -1,6 +1,6 @@
 from typing import Literal
 
-type Kind = Literal["word", "whitespace", "punctuation"]
+Kind = Literal["word", "whitespace", "punctuation"]
 
 
 def kind_with(c: str, ignore_punctuation: bool = False) -> Kind:
