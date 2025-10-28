@@ -1,7 +1,7 @@
 import os
 import asyncio
 from pathlib import Path
-from typing import TypedDict
+from typing import List, TypedDict
 
 import lsp_types
 from lsp_types import types
@@ -64,7 +64,8 @@ class LanguageClient:
         self.buffer = Buffer(initial_code)
         self.session = None
         self.prev_word_start = None
-        self.prev_completions = []
+        self.prev_completions: List[CompletionCandidate] = []
+        self.dirty = False
 
     async def start(self, base_path: Path | str):
         if isinstance(base_path, str):
@@ -92,7 +93,7 @@ class LanguageClient:
         start, end, wordkind = self.buffer.surrounding_word(offset)
         word = self.buffer.text[start:end]
 
-        if wordkind != "word" and word != '.':
+        if wordkind != "word" and word != ".":
             self.prev_word_start = None
             self.prev_completions = []
             return []
@@ -103,7 +104,14 @@ class LanguageClient:
                 for item in self.prev_completions
                 if filter_label(word, wordkind, item["newtext"])
             ]
-            return completions
+            for c in completions:
+                c["end"] = end
+            self.prev_completions = completions
+            return completions[: self.max_completions]
+
+        if self.dirty:
+            await self.session.update_code(self.buffer.text)
+            self.dirty = False
 
         completions = await self.session.get_completion(pos)
         completions = [
@@ -125,17 +133,21 @@ class LanguageClient:
             entry = CompletionCandidate(
                 start=start, end=end, newtext=item["label"], kind=item["kind"]
             )
-            res.append(entry)
+            if entry:
+                res.append(entry)
 
         self.prev_word_start = start
         self.prev_completions = res
 
         return res[: self.max_completions]
 
-    async def update_code(self, new_code: str):
-        self.buffer = Buffer(new_code)
-        if self.session is not None:
-            await self.session.update_code(new_code)
+    async def update_code(self, new_code: str, incremental: bool = False):
+        if incremental:
+            self.buffer.text += new_code
+        else:
+            self.buffer.text = new_code
+
+        self.dirty = True
 
 
 if __name__ == "__main__":
@@ -153,6 +165,18 @@ def a1_very_long_function_name():
 def another_function_that_calls_a_very_long_function_name():
     a
         """.strip()
+        code3 = """
+class DFA:
+    def __init__(self, states, alphabet, transition_function, start_state, accept_states):
+        self.states = states
+        self.alphabet = alphabet
+        self.transition_function = transition_function
+        self.start_state = start_state
+        self.accept_states = accept_states
+
+DFA(
+    tra
+""".strip()
 
         client = LanguageClient(initial_code="")
         await client.start(base_path=Path("."))
@@ -177,5 +201,9 @@ def another_function_that_calls_a_very_long_function_name():
             print([x["newtext"] for x in res])
             end_time = time.time()
             print(f"Time taken: {end_time - start_time:.3f} seconds")
+
+        await client.update_code(code3)
+        res = await client.get_completion()
+        print([x["newtext"] for x in res])
 
     asyncio.run(main())

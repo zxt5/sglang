@@ -1,3 +1,4 @@
+import time
 import asyncio
 from typing import List, Tuple, Protocol, Optional, Sequence, Dict
 import numpy as np
@@ -137,12 +138,14 @@ class LSPProvider:
 
         self.tmpdir = TemporaryDirectory()
         self._start()
+        self.ctx_prefix = []
 
     def _start(self):
         self.event_loop.run_until_complete(self.lsp.start(base_path=self.tmpdir.name))
 
     def reset(self) -> None:
-        # stateless
+        self.event_loop.run_until_complete(self.lsp.update_code(""))
+        self.ctx_prefix = []
         return
 
     def _build_rooted_bfs_order(
@@ -215,6 +218,12 @@ class LSPProvider:
         for i, ctx in enumerate(batch_context_tokens):
             last_token = ctx[-1] if len(ctx) > 0 else int(self.pad_token_id)
             branches = self.get_drafts_for_context(ctx)
+            if not branches:
+                out_tokens[i, 0] = last_token
+                out_tokens[i, 1:] = self.pad_token_id
+                out_masks[i, 1:] = False
+                out_masks[i, 0] = True
+                continue
             # trim each candidate in branches to draft_token_num - 1
             branches = [b[: draft_token_num - 1] for b in branches]
             toks, mflat = self._pack_one_bfs(last_token, branches, draft_token_num)
@@ -223,21 +232,37 @@ class LSPProvider:
 
         return out_tokens.reshape(-1), out_masks.reshape(-1)
 
-    async def run_lsp(self, ctx: str) -> List[str]:
-        await self.lsp.update_code(ctx)
+    async def run_lsp(self, ctx: str, incremental: bool) -> List[str]:
+        await self.lsp.update_code(ctx, incremental)
         completions = await self.lsp.get_completion()
         res = []
         for c in completions:
             prefix_len = c["end"] - c["start"]
-            res.append(c["newtext"][prefix_len:])
+            w = c["newtext"][prefix_len:]
+            if w:
+                res.append(w)
         return res
 
     def get_drafts_for_context(self, ctx: Sequence[int]) -> List[List[int]]:
-        ctx_str = self.tokenizer.decode(ctx, skip_special_tokens=True)
-        # print(f"Context passed to LSP:\n{ctx_str}\n---")
-        res = self.event_loop.run_until_complete(self.run_lsp(ctx_str))
-        # print(f"Drafts from LSP (decoded):\n{res}\n---")
+        if self.ctx_prefix == ctx[: len(self.ctx_prefix)]:
+            ctx_str = self.tokenizer.decode(
+                ctx[len(self.ctx_prefix) :], skip_special_tokens=True
+            )
+            res = self.event_loop.run_until_complete(self.run_lsp(ctx_str, True))
+        else:
+            ctx_str = self.tokenizer.decode(ctx, skip_special_tokens=True)
+            res = self.event_loop.run_until_complete(self.run_lsp(ctx_str, False))
+        self.ctx_prefix = list(ctx)
+
         tokens = [self.tokenizer.encode(r, add_special_tokens=False) for r in res]
+
+        # if res:
+        #     print(
+        #         "Context:",
+        #         self.lsp.buffer.text[-20:].replace("\n", "\\n"),
+        #         " || LSP Drafts:",
+        #         [f"{r} [{len(t)}]" for r, t in zip(res, tokens)],
+        #     )
         return tokens
 
 

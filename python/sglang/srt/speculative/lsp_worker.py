@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import time
 import logging
 from typing import List, Optional, Tuple, Protocol
 from transformers import AutoTokenizer
@@ -177,8 +178,6 @@ class LSPWorker:
         if mask.dtype != np.bool_:
             mask = mask.astype(np.bool_, copy=False)
 
-        # logger.info(f"[LSP] Fake provider active: bs={bs}, draft_token_num={self.draft_token_num}")
-
         return req_drafts, mask
 
     # --------------- same prep path as ngram ---------------
@@ -262,6 +261,11 @@ class LSPWorker:
             logits_output, next_token_ids, num_accepted_tokens = verify_input.verify(
                 batch, logits_output, self.page_size
             )
+
+            if num_accepted_tokens > 0:
+                res_tokens = self.target_tokenizer.decode(next_token_ids[:num_accepted_tokens].tolist())
+                print(f"[LSPWorker] next {num_accepted_tokens} tokens: {res_tokens}")
+
             # print(f"[LSPWorker] accepted {num_accepted_tokens}/{self.draft_token_num} drafts")
             # res_tokens = self.target_tokenizer.decode(next_token_ids[0].tolist())
             # print(f"[LSPWorker] next tokens: {res_tokens}")

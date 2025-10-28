@@ -1,6 +1,7 @@
 import logging
 from typing import List, Optional
 
+from transformers import AutoTokenizer
 import numpy as np
 import torch
 from sgl_kernel.speculative import reconstruct_indices_from_tree_mask
@@ -30,6 +31,9 @@ class NGRAMWorker:
         nccl_port: int,
         target_worker: TpModelWorker,
     ):
+        self.target_model_id = server_args.model_path
+        self.target_tokenizer = AutoTokenizer.from_pretrained(self.target_model_id)
+
         self.target_worker = target_worker
         self.model_runner = target_worker.model_runner
         self.tp_rank = tp_rank
@@ -227,6 +231,9 @@ class NGRAMWorker:
             logits_output, next_token_ids, num_accepted_tokens = verify_input.verify(
                 batch, logits_output, self.page_size
             )
+            if num_accepted_tokens > 0:
+                res_tokens = self.target_tokenizer.decode(next_token_ids[0].tolist())
+                print(f"[NgramWorker] next tokens: {res_tokens}")
             self._update_ngram_cache(batch)
             batch.forward_mode = ForwardMode.DECODE
 
