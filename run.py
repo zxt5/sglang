@@ -1,36 +1,49 @@
+import time
 import requests, json
-from sglang.test.doc_patch import launch_server_cmd
-from sglang.utils import wait_for_server, print_highlight, terminate_process
 
-server_process, port = launch_server_cmd(
-    """
-python3 -m sglang.launch_server --model-path qwen/qwen2.5-0.5b-instruct \
-    --host 0.0.0.0 --port 36001 --log-level warning \
-    --speculative-algorithm NGRAM \
-    --speculative-num-draft-tokens 16
-"""
-)
+RUN_SERVER = False
 
-wait_for_server(f"http://localhost:{port}")
+if RUN_SERVER:
+    from sglang.test.doc_patch import launch_server_cmd
+    from sglang.utils import wait_for_server, print_highlight, terminate_process
 
-print("Server is up and running!")
+    enable_spec = True
+    model = "Qwen/Qwen3-30B-A3B"
 
-print()
+    if enable_spec:
+        server_process, port = launch_server_cmd(
+            f"""
+        python3 -m sglang.launch_server --model-path {model} \
+            --host 0.0.0.0 --port 36001 --log-level warning \
+            --mem-fraction-static 0.9 \
+            --speculative-algorithm NGRAM \
+            --speculative-num-draft-tokens 16
+        """
+        )
+    else:
+        server_process, port = launch_server_cmd(
+            f"""
+        python3 -m sglang.launch_server --model-path {model} \
+            --mem-fraction-static 0.9 \
+            --host 0.0.0.0 --port 36001 --log-level warning
+        """
+        )
 
-while True:
+    wait_for_server(f"http://localhost:{port}")
+    print("Server is up and running!")
+
+def run_once():
     response = requests.post(
-        f"http://localhost:{port}/generate",
+        "http://localhost:36001/generate",
         json={
             "text": """
-def a_very_long_function_name():
-    print("Hello, World!")
+# Implementation and test cases of DFA in Python
 
-def another_function_that_calls_a_very_long_function_name():
-    a
+class
 """.strip(),
             "sampling_params": {
                 "temperature": 0,
-                "max_new_tokens": 20,
+                "max_new_tokens": 300,
             },
             "stream": True,
         },
@@ -48,3 +61,13 @@ def another_function_that_calls_a_very_long_function_name():
             output = data["text"]
             print(output[prev:], end="", flush=True)
             prev = len(output)
+
+start_time = time.time()
+for _ in range(1):
+    run_once()
+end_time = time.time()
+print()
+print(f"Total time: {end_time - start_time:.2f} seconds")
+
+if RUN_SERVER:
+    server_process.terminate()
