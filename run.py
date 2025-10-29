@@ -37,13 +37,13 @@ def run_once():
         "http://localhost:36001/generate",
         json={
             "text": """
-# Implementation and test cases of DFA in Python
+// Implementation and test cases of DFA in Rust
 
-class
+struct
 """.strip(),
             "sampling_params": {
                 "temperature": 0,
-                "max_new_tokens": 300,
+                "max_new_tokens": 600,
             },
             "stream": True,
         },

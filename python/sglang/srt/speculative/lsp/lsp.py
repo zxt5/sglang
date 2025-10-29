@@ -1,4 +1,5 @@
 import os
+import time
 import asyncio
 from pathlib import Path
 from typing import List, TypedDict
@@ -10,6 +11,8 @@ from lsp_types.types import Position
 
 from sglang.srt.speculative.lsp.buffer import Buffer
 from sglang.srt.speculative.lsp.char_classifier import Kind
+from sglang.srt.speculative.lsp.rust_backend import RustAnalayzerBackend
+from sglang.srt.speculative.lsp.session import Session
 
 
 class CompletionCandidate(TypedDict):
@@ -23,6 +26,22 @@ def filter_label(word: str, kind: Kind, label: str):
     if kind == "word":
         return label.startswith(word)
     return True
+
+
+def process_label(item: lsp_types.CompletionItem) -> str:
+    label = item["label"]
+    if "textEdit" in item:
+        text_edit = item["textEdit"]
+        if "newText" in text_edit:
+            # extract common prefix of label and newText
+            new_text = text_edit["newText"]
+            i = 0
+            m = min(len(label), len(new_text))
+            while i < m and label[i] == new_text[i]:
+                i += 1
+            label = label[:i]
+
+    return label
 
 
 def completion_item_kind2priority(kind: int) -> int:
@@ -59,23 +78,37 @@ def completion_item_kind2priority(kind: int) -> int:
 
 
 class LanguageClient:
-    def __init__(self, initial_code: str, max_completions: int = 4):
+    def __init__(
+        self, initial_code: str, max_completions: int = 8, lang: str = "python"
+    ):
         self.max_completions = max_completions
         self.buffer = Buffer(initial_code)
         self.session = None
         self.prev_word_start = None
         self.prev_completions: List[CompletionCandidate] = []
         self.dirty = False
+        self.increased_code = None
+
+        self.lang = lang
 
     async def start(self, base_path: Path | str):
         if isinstance(base_path, str):
             base_path = Path(base_path)
 
-        self.session = await lsp_types.Session.create(
-            PyrightBackend(),
-            base_path=base_path,
-            initial_code=self.buffer.text,
-        )
+        if self.lang in ["rust"]:
+            self.session = await Session.create(
+                RustAnalayzerBackend(),
+                base_path=base_path,
+                initial_code=self.buffer.text,
+                document_uri=f"file://{base_path / 'src' / 'main.rs'}",
+            )
+            time.sleep(5)  # wait for rust-analyzer to be ready (indexing)
+        elif self.lang in ["python"]:
+            self.session = await Session.create(
+                PyrightBackend(),
+                base_path=base_path,
+                initial_code=self.buffer.text,
+            )
 
     async def get_completion(
         self, pos: Position | None = None
@@ -93,7 +126,7 @@ class LanguageClient:
         start, end, wordkind = self.buffer.surrounding_word(offset)
         word = self.buffer.text[start:end]
 
-        if wordkind != "word" and word != ".":
+        if wordkind != "word" and word not in [":", ".", ">"]:
             self.prev_word_start = None
             self.prev_completions = []
             return []
@@ -110,10 +143,25 @@ class LanguageClient:
             return completions[: self.max_completions]
 
         if self.dirty:
-            await self.session.update_code(self.buffer.text)
+            if self.increased_code is not None:
+                await self.session.update_code(
+                    self.increased_code,
+                    incremental_pos=self.buffer.offset2pos(
+                        len(self.buffer.text) - len(self.increased_code)
+                    ),
+                )
+                self.increased_code = None
+            else:
+                if self.lang in ["rust"]:
+                    await self.session.close_document()
+                    await self.session.open_document(self.buffer.text)
+                else:
+                    await self.session.update_code(self.buffer.text)
             self.dirty = False
 
         completions = await self.session.get_completion(pos)
+        if completions is None:
+            return []
         completions = [
             item
             for item in completions["items"]
@@ -131,9 +179,9 @@ class LanguageClient:
         for item in completions:
             # to replace [start, end) with newtext
             entry = CompletionCandidate(
-                start=start, end=end, newtext=item["label"], kind=item["kind"]
+                start=start, end=end, newtext=process_label(item), kind=item["kind"]
             )
-            if entry:
+            if entry["newtext"]:
                 res.append(entry)
 
         self.prev_word_start = start
@@ -143,8 +191,15 @@ class LanguageClient:
 
     async def update_code(self, new_code: str, incremental: bool = False):
         if incremental:
+            if self.lang in ["rust"]:
+                if self.increased_code is None:
+                    self.increased_code = new_code
+                else:
+                    self.increased_code += new_code
+
             self.buffer.text += new_code
         else:
+            self.increased_code = None
             self.buffer.text = new_code
 
         self.dirty = True
@@ -153,7 +208,7 @@ class LanguageClient:
 if __name__ == "__main__":
     import time
 
-    async def main():
+    async def test_pyright():
         code1 = """
 def add(x0, x1):
     return x
@@ -206,4 +261,23 @@ DFA(
         res = await client.get_completion()
         print([x["newtext"] for x in res])
 
-    asyncio.run(main())
+    async def test_rust():
+        code1 = """fn add(x0: i32, x1: i32) -> i32 {
+    x
+""".strip()
+        code2 = """fn a1_very_long_function_name() {
+    println!("Hello, World!");
+}
+fn another_function_that_calls_a_very_long_function_name() {
+    a
+""".strip()
+
+        client = LanguageClient(initial_code="", lang="rust")
+        await client.start(os.path.realpath("/data/h445xu/repo/temp"))
+        time.sleep(5)
+        await client.update_code(code1, True)
+        res = await client.get_completion()
+        print([x["newtext"] for x in res])
+
+    asyncio.run(test_pyright())
+    asyncio.run(test_rust())
