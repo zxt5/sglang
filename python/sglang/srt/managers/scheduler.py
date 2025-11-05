@@ -438,19 +438,8 @@ class Scheduler(
             )
         elif self.spec_algorithm.is_ngram():
             from sglang.srt.speculative.ngram_worker import NGRAMWorker
-            from sglang.srt.speculative.lsp_worker import LSPWorker
 
-            # self.draft_worker = NGRAMWorker(
-            #     gpu_id=gpu_id,
-            #     tp_rank=tp_rank,
-            #     moe_ep_rank=moe_ep_rank,
-            #     server_args=server_args,
-            #     nccl_port=port_args.nccl_port,
-            #     target_worker=self.tp_worker,
-            #     dp_rank=dp_rank,
-            # )
-
-            self.draft_worker = LSPWorker(
+            self.draft_worker = NGRAMWorker(
                 gpu_id=gpu_id,
                 tp_rank=tp_rank,
                 moe_ep_rank=moe_ep_rank,
@@ -912,7 +901,7 @@ class Scheduler(
                 token_to_kv_pool_allocator=self.token_to_kv_pool_allocator,
                 draft_token_to_kv_pool=(
                     None
-                    if self.draft_worker is None or self.spec_algorithm.is_ngram()
+                    if self.draft_worker is None or self.spec_algorithm.is_ngram() or self.spec_algorithm.is_lsp()
                     else self.draft_worker.model_runner.token_to_kv_pool
                 ),
                 req_to_metadata_buffer_idx_allocator=self.req_to_metadata_buffer_idx_allocator,
@@ -949,7 +938,7 @@ class Scheduler(
                 token_to_kv_pool=self.token_to_kv_pool_allocator.get_kvcache(),
                 draft_token_to_kv_pool=(
                     None
-                    if self.draft_worker is None or self.spec_algorithm.is_ngram()
+                    if self.draft_worker is None or self.spec_algorithm.is_ngram() or self.spec_algorithm.is_lsp()
                     else self.draft_worker.model_runner.token_to_kv_pool
                 ),
                 req_to_metadata_buffer_idx_allocator=self.req_to_metadata_buffer_idx_allocator,

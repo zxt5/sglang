@@ -326,6 +326,8 @@ class ServerArgs:
     speculative_ngram_match_type: Literal["BFS", "PROB"] = "BFS"
     speculative_ngram_branch_length: int = 18
     speculative_ngram_capacity: int = 10 * 1000 * 1000
+    # For LSP only
+    speculative_lsp_lang: str = "python"
 
     # Expert parallelism
     ep_size: int = 1
@@ -693,7 +695,7 @@ class ServerArgs:
                 if self.speculative_algorithm == "STANDALONE":
                     # standalonedraft model and cuda graphs
                     reserved_mem += 6 * 1024
-                elif self.speculative_algorithm != "NGRAM":
+                elif self.speculative_algorithm != "NGRAM" and self.speculative_algorithm != "LSP":
                     # eagle draft models and cuda graphs
                     reserved_mem += 2 * 1024
 
@@ -1161,7 +1163,7 @@ class ServerArgs:
                     "speculative_eagle_topk > 1 with page_size > 1 is unstable and produces incorrect results for paged attention backends. This combination is only supported for the 'flashinfer' backend."
                 )
 
-        if self.speculative_algorithm == "NGRAM":
+        if self.speculative_algorithm == "NGRAM" or self.speculative_algorithm == "LSP":
             if not self.device.startswith("cuda"):
                 raise ValueError(
                     "Ngram speculative decoding only supports CUDA device."
@@ -2199,6 +2201,12 @@ class ServerArgs:
             type=int,
             default=ServerArgs.speculative_ngram_capacity,
             help="The cache capacity for ngram speculative decoding.",
+        )
+        parser.add_argument(
+            "--speculative-lsp-lang",
+            type=str,
+            default=ServerArgs.speculative_lsp_lang,
+            help="The language for LSP speculative decoding.",
         )
 
         # Expert parallelism

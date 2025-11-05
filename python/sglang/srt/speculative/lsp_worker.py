@@ -22,7 +22,7 @@ from sglang.srt.managers.scheduler import GenerationBatchResult
 from sglang.srt.managers.tp_worker import TpModelWorker
 from sglang.srt.model_executor.forward_batch_info import ForwardMode
 from sglang.srt.server_args import ServerArgs
-from sglang.srt.speculative.ngram_info import NgramVerifyInput
+from sglang.srt.speculative.lsp_info import LspVerifyInput
 from sglang.srt.speculative.spec_info import SpeculativeAlgorithm
 
 
@@ -47,6 +47,7 @@ class LSPWorker:
         pad_token_id: Optional[int] = 0,
         max_match_window_size: Optional[int] = None,
     ) -> None:
+        self.lang = server_args.speculative_lsp_lang
         self.target_model_id = server_args.model_path
         self.target_tokenizer = AutoTokenizer.from_pretrained(self.target_model_id)
 
@@ -68,6 +69,7 @@ class LSPWorker:
 
         self.pad_token_id = int(pad_token_id or 0)
         self.lsp_provider = LSPProvider(
+            lang=self.lang,
             tokenizer=self.target_tokenizer,
             pad_token_id=self.pad_token_id,
         )
@@ -225,9 +227,9 @@ class LSPWorker:
                 tree_mask.append(req_mask.flatten())
             tree_mask = torch.cat(tree_mask, dim=0)
 
-        batch.spec_algorithm = SpeculativeAlgorithm.NGRAM
+        batch.spec_algorithm = SpeculativeAlgorithm.LSP
         batch.forward_mode = ForwardMode.TARGET_VERIFY
-        batch.spec_info = NgramVerifyInput(
+        batch.spec_info = LspVerifyInput(
             draft_tokens,
             tree_mask,
             positions,

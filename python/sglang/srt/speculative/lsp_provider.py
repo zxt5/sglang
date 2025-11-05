@@ -22,6 +22,7 @@ class LSPDraftProvider(Protocol):
 class LSPProvider:
     def __init__(
         self,
+        lang: str,
         pad_token_id: int,
         tokenizer,
         fixed_branches: Optional[List[List[int]]] = None,
@@ -29,7 +30,7 @@ class LSPProvider:
         self.pad_token_id = pad_token_id
         self.tokenizer = tokenizer
         self.fixed_branches = fixed_branches
-        self.lsp = LanguageClient(initial_code="", lang="rust")
+        self.lsp = LanguageClient(initial_code="", lang=lang)
         self.event_loop = asyncio.new_event_loop()
 
         self.tmpdir = TemporaryDirectory()
