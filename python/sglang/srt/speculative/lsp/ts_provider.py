@@ -23,7 +23,7 @@ class TreeSitterCompletionProvider:
             raise ValueError(f"Unsupported language: {lang}")
         self.parser = Parser(self.lang)
         self.code = ""
-        self.tree: Tree | None = None
+        self.tree = self.parser.parse(b"")
 
     def reset_code(self, code: str):
         self.code = code
@@ -41,6 +41,9 @@ class TreeSitterCompletionProvider:
         while cursor.goto_last_child():
             last_child = cursor.node
 
+        if last_child is None:
+            return []
+
         state = self.lang.next_state(last_child.parse_state, last_child.grammar_id)
         iter = self.lang.lookahead_iterator(state)
         symbols = iter.symbols()
@@ -50,7 +53,8 @@ class TreeSitterCompletionProvider:
             if self.lang.node_kind_is_visible(s) and not self.lang.node_kind_is_named(s)
         ]
         if not self.code.endswith((" ", "\n")):
-            return [c for c in candidates if not c[0].isalnum()]
+            candidates = [c if not c[0].isalnum() else " " + c for c in candidates]
+        candidates = candidates[:5]
         return candidates
 
 
@@ -61,6 +65,25 @@ if __name__ == "__main__":
 def a"""
 
     tsc = TreeSitterCompletionProvider("python")
+    tsc.reset_code(source_code.decode())
+    print(tsc.complete())
+
+    tsc.append_code("(x")
+    print(tsc.complete())
+
+    source_code = b"""public static void main(String[] args) {
+        String url = "https://jsonplaceholder.typicode.com/posts/1";
+        String response = sendGetRequest("""
+    tsc = TreeSitterCompletionProvider("java")
+    tsc.reset_code(source_code.decode())
+    print(tsc.complete())
+
+    tsc.append_code("(x")
+    print(tsc.complete())
+
+    source_code = b"""fn main() {
+    println!()"""
+    tsc = TreeSitterCompletionProvider("rust")
     tsc.reset_code(source_code.decode())
     print(tsc.complete())
 

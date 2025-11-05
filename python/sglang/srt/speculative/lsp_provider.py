@@ -6,6 +6,7 @@ from transformers import AutoTokenizer
 from tempfile import TemporaryDirectory
 
 from sglang.srt.speculative.lsp.lsp import LanguageClient
+from sglang.srt.speculative.lsp.ts_provider import TreeSitterCompletionProvider
 
 
 class LSPDraftProvider(Protocol):
@@ -26,11 +27,15 @@ class LSPProvider:
         pad_token_id: int,
         tokenizer,
         fixed_branches: Optional[List[List[int]]] = None,
+        only_ts: bool = False,
     ) -> None:
         self.pad_token_id = pad_token_id
         self.tokenizer = tokenizer
         self.fixed_branches = fixed_branches
-        self.lsp = LanguageClient(initial_code="", lang=lang)
+        self.only_ts = only_ts
+        if not self.only_ts:
+            self.lsp = LanguageClient(initial_code="", lang=lang)
+        self.ts = TreeSitterCompletionProvider(lang)
         self.event_loop = asyncio.new_event_loop()
 
         self.tmpdir = TemporaryDirectory()
@@ -38,10 +43,12 @@ class LSPProvider:
         self.ctx_prefix = []
 
     def _start(self):
-        self.event_loop.run_until_complete(self.lsp.start(base_path=self.tmpdir.name))
+        if not self.only_ts:
+            self.event_loop.run_until_complete(self.lsp.start(base_path=self.tmpdir.name))
 
     def reset(self) -> None:
-        self.event_loop.run_until_complete(self.lsp.update_code(""))
+        if not self.only_ts:
+            self.event_loop.run_until_complete(self.lsp.update_code(""))
         self.ctx_prefix = []
         return
 
@@ -131,14 +138,22 @@ class LSPProvider:
         return out_tokens.reshape(-1), out_masks.reshape(-1)
 
     async def run_lsp(self, ctx: str, incremental: bool) -> List[str]:
-        await self.lsp.update_code(ctx, incremental)
-        completions = await self.lsp.get_completion()
+        if incremental:
+            self.ts.append_code(ctx)
+        else:
+            self.ts.reset_code(ctx)
+
         res = []
-        for c in completions:
-            prefix_len = c["end"] - c["start"]
-            w = c["newtext"][prefix_len:]
-            if w:
-                res.append(w)
+        if not self.only_ts:
+            await self.lsp.update_code(ctx, incremental)
+            completions = await self.lsp.get_completion()
+            for c in completions:
+                prefix_len = c["end"] - c["start"]
+                w = c["newtext"][prefix_len:]
+                if w:
+                    res.append(w)
+
+        res += self.ts.complete()
         return res
 
     def get_drafts_for_context(self, ctx: Sequence[int]) -> List[List[int]]:
@@ -157,7 +172,7 @@ class LSPProvider:
         # if res:
         #     print(
         #         "Context:",
-        #         self.lsp.buffer.text[-20:].replace("\n", "\\n"),
+        #         ctx_str[-10:].replace("\n", "\\n"),
         #         " || LSP Drafts:",
         #         [f"{r} [{len(t)}]" for r, t in zip(res, tokens)],
         #     )

@@ -8,7 +8,7 @@ def run_once():
         "http://localhost:36001/generate",
         json={
             "text": """
-// Implementation and test cases of hypergraph and join tree in Java
+// Implementation and test cases of nfa/dfa regex in Python
 
 import
 """.strip(),

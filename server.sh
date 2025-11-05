@@ -1,4 +1,4 @@
-lang=java
+lang=python
 # model=Qwen/Qwen3-30B-A3B
 model=Qwen/Qwen2.5-Coder-7B-Instruct
 # model=qwen/qwen2.5-0.5b-instruct
