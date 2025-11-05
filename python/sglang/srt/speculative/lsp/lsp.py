@@ -9,6 +9,7 @@ from lsp_types import types
 from lsp_types.pyright.backend import PyrightBackend
 from lsp_types.types import Position
 
+from sglang.srt.speculative.lsp.java_backend import JavaBackend
 from sglang.srt.speculative.lsp.buffer import Buffer
 from sglang.srt.speculative.lsp.char_classifier import Kind
 from sglang.srt.speculative.lsp.rust_backend import RustAnalayzerBackend
@@ -77,6 +78,9 @@ def completion_item_kind2priority(kind: int) -> int:
     return priority_map.get(kind, 100)  # default low priority
 
 
+INCREMENTAL_LANGS = ["java", "rust"]
+
+
 class LanguageClient:
     def __init__(
         self, initial_code: str, max_completions: int = 8, lang: str = "python"
@@ -101,6 +105,14 @@ class LanguageClient:
                 base_path=base_path,
                 initial_code=self.buffer.text,
                 document_uri=f"file://{base_path / 'src' / 'main.rs'}",
+            )
+            time.sleep(5)  # wait for rust-analyzer to be ready (indexing)
+        elif self.lang in ["java"]:
+            self.session = await Session.create(
+                JavaBackend(),
+                base_path=base_path,
+                initial_code=self.buffer.text,
+                document_uri=f"file://{base_path / 'src' / 'Main.java'}",
             )
             time.sleep(5)  # wait for rust-analyzer to be ready (indexing)
         elif self.lang in ["python"]:
@@ -152,7 +164,7 @@ class LanguageClient:
                 )
                 self.increased_code = None
             else:
-                if self.lang in ["rust"]:
+                if self.lang in INCREMENTAL_LANGS:
                     await self.session.close_document()
                     await self.session.open_document(self.buffer.text)
                 else:
@@ -191,7 +203,7 @@ class LanguageClient:
 
     async def update_code(self, new_code: str, incremental: bool = False):
         if incremental:
-            if self.lang in ["rust"]:
+            if self.lang in INCREMENTAL_LANGS:
                 if self.increased_code is None:
                     self.increased_code = new_code
                 else:
@@ -279,5 +291,39 @@ fn another_function_that_calls_a_very_long_function_name() {
         res = await client.get_completion()
         print([x["newtext"] for x in res])
 
-    asyncio.run(test_pyright())
-    asyncio.run(test_rust())
+        await client.update_code(code2, False)
+        res = await client.get_completion()
+        print([x["newtext"] for x in res])
+
+    async def test_java():
+        code1 = """public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello, World!");
+    }
+
+    public static int add(int x0, int x1) {
+        x
+""".strip()
+        code2 = """public class Main {
+    public void aVeryLongFunctionName() {
+        System.out.println("Hello, World!");
+    }
+
+    public void anotherFunctionThatCallsTheVeryLongFunctionName() {
+        a
+""".strip()
+
+        client = LanguageClient(initial_code="", lang="java")
+        await client.start(os.path.realpath("/data/h445xu/repo/temp"))
+        time.sleep(5)
+        await client.update_code(code1, True)
+        res = await client.get_completion()
+        print([x["newtext"] for x in res])
+
+        await client.update_code(code2, False)
+        res = await client.get_completion()
+        print([x["newtext"] for x in res])
+
+    # asyncio.run(test_pyright())
+    # asyncio.run(test_rust())
+    asyncio.run(test_java())
