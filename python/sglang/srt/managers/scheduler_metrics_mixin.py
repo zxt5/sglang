@@ -46,6 +46,7 @@ class SchedulerMetricsMixin:
         self.spec_num_total_forward_ct = 0
         self.cum_spec_accept_length = 0
         self.cum_spec_accept_count = 0
+        self.cum_token_count = 0
         self.kv_transfer_speed_gb_s: float = 0.0
         self.kv_transfer_latency_ms: float = 0.0
 
@@ -178,6 +179,7 @@ class SchedulerMetricsMixin:
         gap_latency = time.perf_counter() - self.last_decode_stats_tic
         self.last_decode_stats_tic = time.perf_counter()
         self.last_gen_throughput = self.num_generated_tokens / gap_latency
+        self.cum_token_count += self.num_generated_tokens
 
         self.num_generated_tokens = 0
         num_running_reqs = len(batch.reqs)
@@ -252,6 +254,9 @@ class SchedulerMetricsMixin:
             self.stats.num_grammar_queue_reqs = len(self.grammar_queue)
             self.stats.cache_hit_rate = cache_hit_rate
             self.stats.spec_accept_length = spec_accept_length
+            self.stats.cum_spec_accept_length = self.cum_spec_accept_length
+            self.stats.cum_spec_accept_count = self.cum_spec_accept_count
+            self.stats.cum_token_count = self.cum_token_count
 
             # Retract
             self.stats.num_retracted_reqs = self.num_retracted_reqs

@@ -127,6 +127,9 @@ class SchedulerStats:
 
     # Speculative decoding
     spec_accept_length: float = 0.0
+    cum_spec_accept_count: float = 0.0
+    cum_spec_accept_length: float = 0.0
+    cum_token_count: float = 0.0
 
     # Retract
     num_retracted_reqs: int = 0
@@ -220,6 +223,28 @@ class SchedulerMetricsCollector:
             labelnames=labels.keys(),
             multiprocess_mode="mostrecent",
         )
+
+        self.cum_spec_accept_length = Gauge(
+            name="sglang:cum_spec_accept_length",
+            documentation="The cumulative acceptance length of speculative decoding.",
+            labelnames=labels.keys(),
+            multiprocess_mode="mostrecent",
+        )
+
+        self.cum_spec_accept_count = Gauge(
+            name="sglang:cum_spec_accept_count",
+            documentation="The cumulative acceptance count of speculative decoding.",
+            labelnames=labels.keys(),
+            multiprocess_mode="mostrecent",
+        )
+
+        self.cum_token_count = Gauge(
+            name="sglang:cum_token_count",
+            documentation="The cumulative token count.",
+            labelnames=labels.keys(),
+            multiprocess_mode="mostrecent",
+        )
+
 
         # Retract
         self.num_retracted_reqs = Gauge(
@@ -520,6 +545,9 @@ class SchedulerMetricsCollector:
 
         # Speculative decoding
         self._log_gauge(self.spec_accept_length, stats.spec_accept_length)
+        self._log_gauge(self.cum_spec_accept_length, stats.cum_spec_accept_length)
+        self._log_gauge(self.cum_spec_accept_count, stats.cum_spec_accept_count)
+        self._log_gauge(self.cum_token_count, stats.cum_token_count)
 
         # PD disaggregation
         self._log_gauge(

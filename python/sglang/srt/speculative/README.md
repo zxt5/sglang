@@ -16,6 +16,12 @@ uv pip install pyright
 rustup component add rust-analyzer
 ```
 
+May need to copy the following to your shell profile (e.g., `~/.bashrc` or `~/.zshrc`):
+
+```sh
+. "$HOME/.cargo/env"
+```
+
 ## Setup Java Language Server
 
 Download and set up JDK 25 and Eclipse JDT Language Server:
@@ -35,5 +41,24 @@ Copy the following settings to your shell profile (e.g., `~/.bashrc` or `~/.zshr
 ```sh
 export PATH=/.../jdk-25.0.1/bin:/.../jdt/bin:$PATH
 export JAVA_HOME="$(dirname $(dirname $(realpath $(which javac))))"
-. "$HOME/.cargo/env"
+```
+
+# Usage
+
+## Start Server
+
+```sh
+bash server.sh
+```
+
+## Request Completion
+
+```sh
+python3 run.py
+```
+
+## Fetch Metrics
+
+```sh
+curl http://localhost:36001/metrics
 ```
