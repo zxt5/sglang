@@ -328,6 +328,7 @@ class ServerArgs:
     speculative_ngram_capacity: int = 10 * 1000 * 1000
     # For LSP only
     speculative_lsp_lang: str = "python"
+    speculative_lsp_only_ts: bool = False
 
     # Expert parallelism
     ep_size: int = 1
@@ -2207,6 +2208,11 @@ class ServerArgs:
             type=str,
             default=ServerArgs.speculative_lsp_lang,
             help="The language for LSP speculative decoding.",
+        )
+        parser.add_argument(
+            "--speculative-lsp-only-ts",
+            action="store_true",
+            help="Whether to only use Tree-Sitter for LSP speculative decoding.",
         )
 
         # Expert parallelism
