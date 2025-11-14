@@ -30,6 +30,17 @@ class TreeSitterCompletionProvider:
         self.tree = self.parser.parse(self.code.encode())
 
     def append_code(self, append: str):
+        end_line = self.code.count("\n")
+        end_col = len(self.code.split("\n")[-1])
+
+        self.tree.edit(
+            start_byte=len(self.code.encode()),
+            old_end_byte=len(self.code.encode()),
+            new_end_byte=len(self.code.encode()) + len(append.encode()),
+            start_point=(end_line, end_col),
+            old_end_point=(end_line, end_col),
+            new_end_point=(end_line, end_col + len(append)),
+        )
         self.code += append
         self.tree = self.parser.parse(self.code.encode(), self.tree)
 
@@ -73,7 +84,7 @@ def a"""
 
     source_code = b"""public static void main(String[] args) {
         String url = "https://jsonplaceholder.typicode.com/posts/1";
-        String response = sendGetRequest("""
+        String response = sendGetRequest"""
     tsc = TreeSitterCompletionProvider("java")
     tsc.reset_code(source_code.decode())
     print(tsc.complete())
@@ -82,7 +93,7 @@ def a"""
     print(tsc.complete())
 
     source_code = b"""fn main() {
-    println!()"""
+    println!"""
     tsc = TreeSitterCompletionProvider("rust")
     tsc.reset_code(source_code.decode())
     print(tsc.complete())
