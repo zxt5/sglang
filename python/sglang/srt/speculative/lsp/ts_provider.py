@@ -32,6 +32,12 @@ class TreeSitterCompletionProvider:
     def append_code(self, append: str):
         end_line = self.code.count("\n")
         end_col = len(self.code.split("\n")[-1])
+        new_end_line = end_line + append.count("\n")
+        new_end_col = (
+            len(append.split("\n")[-1])
+            if new_end_line > end_line
+            else end_col + len(append)
+        )
 
         self.tree.edit(
             start_byte=len(self.code.encode()),
@@ -39,7 +45,7 @@ class TreeSitterCompletionProvider:
             new_end_byte=len(self.code.encode()) + len(append.encode()),
             start_point=(end_line, end_col),
             old_end_point=(end_line, end_col),
-            new_end_point=(end_line, end_col + len(append)),
+            new_end_point=(new_end_line, new_end_col),
         )
         self.code += append
         self.tree = self.parser.parse(self.code.encode(), self.tree)
