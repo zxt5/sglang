@@ -2215,6 +2215,11 @@ class ServerArgs:
             action="store_true",
             help="Whether to only use Tree-Sitter for LSP speculative decoding.",
         )
+        parser.add_argument(
+            "--speculative-lsp-only-lsp",
+            action="store_true",
+            help="Whether to only use LSP model for LSP speculative decoding.",
+        )
 
         # Expert parallelism
         parser.add_argument(
