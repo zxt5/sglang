@@ -28,14 +28,17 @@ class LSPProvider:
         tokenizer,
         fixed_branches: Optional[List[List[int]]] = None,
         only_ts: bool = False,
+        only_lsp: bool = False,
     ) -> None:
         self.pad_token_id = pad_token_id
         self.tokenizer = tokenizer
         self.fixed_branches = fixed_branches
         self.only_ts = only_ts
+        self.only_lsp = only_lsp
         if not self.only_ts:
             self.lsp = LanguageClient(initial_code="", lang=lang)
-        self.ts = TreeSitterCompletionProvider(lang)
+        if not self.only_lsp:
+            self.ts = TreeSitterCompletionProvider(lang)
         self.event_loop = asyncio.new_event_loop()
 
         self.tmpdir = TemporaryDirectory()
@@ -138,10 +141,11 @@ class LSPProvider:
         return out_tokens.reshape(-1), out_masks.reshape(-1)
 
     async def run_lsp(self, ctx: str, incremental: bool) -> List[str]:
-        if incremental:
-            self.ts.append_code(ctx)
-        else:
-            self.ts.reset_code(ctx)
+        if not self.only_lsp:
+            if incremental:
+                self.ts.append_code(ctx)
+            else:
+                self.ts.reset_code(ctx)
 
         res = []
         if not self.only_ts:
@@ -153,7 +157,8 @@ class LSPProvider:
                 if w:
                     res.append(w)
 
-        res += self.ts.complete()
+        if not self.only_lsp:
+            res += self.ts.complete()
         return res
 
     def get_drafts_for_context(self, ctx: Sequence[int]) -> List[List[int]]:

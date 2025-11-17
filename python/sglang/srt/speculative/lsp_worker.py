@@ -73,6 +73,7 @@ class LSPWorker:
             tokenizer=self.target_tokenizer,
             pad_token_id=self.pad_token_id,
             only_ts=server_args.speculative_lsp_only_ts,
+            only_lsp=server_args.speculative_lsp_only_lsp,
         )
 
         self._init_preallocated_tensors()

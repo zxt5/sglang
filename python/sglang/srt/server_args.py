@@ -329,6 +329,7 @@ class ServerArgs:
     # For LSP only
     speculative_lsp_lang: str = "python"
     speculative_lsp_only_ts: bool = False
+    speculative_lsp_only_lsp: bool = False
 
     # Expert parallelism
     ep_size: int = 1
