@@ -195,7 +195,9 @@ class SchedulerOutputProcessorMixin:
                     # being chunked reqs' prefill is not finished
                     req.is_chunked -= 1
 
-        self.stream_output(batch.reqs, batch.return_logprob, skip_stream_req)
+        self.stream_output(batch.reqs, batch.return_logprob, skip_stream_req, extra=[{
+            "accepted_draft_tokens": result.num_accepted_tokens,
+        }])
 
     def process_batch_result_decode(
         self: Scheduler,
@@ -293,7 +295,9 @@ class SchedulerOutputProcessorMixin:
                     self.abort_request(AbortReq(rid=req.rid))
                 req.grammar.finished = req.finished()
 
-        self.stream_output(batch.reqs, batch.return_logprob)
+        self.stream_output(batch.reqs, batch.return_logprob, extra=[{
+            "accepted_draft_tokens": result.num_accepted_tokens,
+        }])
         self.token_to_kv_pool_allocator.free_group_end()
 
         self.forward_ct_decode = (self.forward_ct_decode + 1) % (1 << 30)
@@ -505,10 +509,11 @@ class SchedulerOutputProcessorMixin:
         reqs: List[Req],
         return_logprob: bool,
         skip_req: Optional[Req] = None,
+        extra: List = None,
     ):
         """Stream the output to detokenizer."""
         if self.is_generation:
-            self.stream_output_generation(reqs, return_logprob, skip_req)
+            self.stream_output_generation(reqs, return_logprob, skip_req, extra)
         else:  # embedding or reward model
             self.stream_output_embedding(reqs)
 
@@ -517,6 +522,7 @@ class SchedulerOutputProcessorMixin:
         reqs: List[Req],
         return_logprob: bool,
         skip_req: Optional[Req] = None,
+        extra: List = None,
     ):
         rids = []
         finished_reasons: List[BaseFinishReason] = []
@@ -713,6 +719,7 @@ class SchedulerOutputProcessorMixin:
             self.send_to_detokenizer.send_pyobj(
                 BatchTokenIDOutput(
                     finished_reasons,
+                    extra,
                     decoded_texts,
                     decode_ids_list,
                     read_offsets,

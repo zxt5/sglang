@@ -1363,6 +1363,7 @@ class TokenizerManager(TokenizerCommunicatorMixin):
                     "text": state.text,
                     "output_ids": output_token_ids,
                     "meta_info": meta_info,
+                    "extra": recv_obj.extra[i] if len(recv_obj.extra) > i else {},
                 }
             elif isinstance(recv_obj, BatchTokenIDOutput):
                 if self.server_args.stream_output and state.obj.stream:
@@ -1376,6 +1377,7 @@ class TokenizerManager(TokenizerCommunicatorMixin):
                 out_dict = {
                     "output_ids": output_token_ids,
                     "meta_info": meta_info,
+                    "extra": recv_obj.extra[i] if len(recv_obj.extra) > i else {},
                 }
             elif isinstance(recv_obj, BatchMultimodalOutput):
                 raise NotImplementedError("BatchMultimodalOut not implemented")

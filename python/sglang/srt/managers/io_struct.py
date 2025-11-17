@@ -799,6 +799,7 @@ class BatchTokenizedEmbeddingReqInput(BaseBatchReq):
 class BatchTokenIDOutput(BaseBatchReq):
     # The finish reason
     finished_reasons: List[BaseFinishReason]
+    extra: List[Any]
     # For incremental decoding
     decoded_texts: List[str]
     decode_ids: List[int]
@@ -875,6 +876,8 @@ class BatchStrOutput(BaseBatchReq):
     output_strs: List[str]
     # The token ids
     output_ids: Optional[List[int]]
+
+    extra: List[Any]
 
     # Token counts
     prompt_tokens: List[int]
