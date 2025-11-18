@@ -187,6 +187,9 @@ class LanguageClient:
             )
         )
 
+        if wordkind != 'word':
+            start = end
+
         res = []
         for item in completions:
             # to replace [start, end) with newtext
@@ -324,6 +327,6 @@ fn another_function_that_calls_a_very_long_function_name() {
         res = await client.get_completion()
         print([x["newtext"] for x in res])
 
-    # asyncio.run(test_pyright())
+    asyncio.run(test_pyright())
     # asyncio.run(test_rust())
-    asyncio.run(test_java())
+    # asyncio.run(test_java())
