@@ -71,9 +71,40 @@ def run_once(id: str, prompt: str, max_new_tokens: int) -> Metrics:
 
 
 def main():
+
+    alg = "nospec" # "lsp" or "lsp-ts" or "ngram" or "nospec" or "ts"
+    model = "32b"
+
     metrics_list = MetricsList(metrics=[])
     ds = load_dataset("openai/openai_humaneval")
     os.makedirs("eval_results", exist_ok=True)
+    os.makedirs("stack_results", exist_ok=True)
+
+
+    def eval_stack(max_new_tokens: int):
+        prompts_jsonl = "/home/x27zhou/lspec/prompts_python.jsonl"
+        prompts = []
+        with open(prompts_jsonl, "r", encoding="utf-8") as f:
+            for line in f:
+                item = json.loads(line)
+                prompts.append(item["prompt"])
+        for i, prompt in enumerate(prompts):
+            metrics = run_once(
+                f"stack-{i}",
+                prompt,
+                max_new_tokens=max_new_tokens,
+            )
+            print(
+                f"Completed sample {i + 1}, {metrics.total_time=:.2f}, {metrics.n_generated_tokens=}, {sum(metrics.n_accepted_draft_tokens_per_chunk)=}"
+            )
+            metrics_list.metrics.append(metrics)
+
+        with open(f"stack_results/eval-stack-{max_new_tokens}-{alg}-{model}.json", "w") as f:
+            f.write(metrics_list.model_dump_json(indent=2))
+
+    # eval_stack(100)
+    # eval_stack(300)
+
 
     def eval(max_new_tokens: int):
         for i, sample in enumerate(ds["test"]):
@@ -85,7 +116,7 @@ def main():
             metrics_list.metrics.append(metrics)
 
         # save metrics list
-        with open(f"eval_results/eval-humaneval-{max_new_tokens}.json", "w") as f:
+        with open(f"eval_results/eval-humaneval-{max_new_tokens}-{alg}-{model}.json", "w") as f:
             f.write(metrics_list.model_dump_json(indent=2))
 
     eval(100)

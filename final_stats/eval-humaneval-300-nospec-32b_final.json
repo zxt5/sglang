@@ -1,0 +1,8 @@
+{
+  "id": "eval-humaneval-300-nospec-32b",
+  "ttft": 0.14671395464641293,
+  "tpot": 0.049709819261325366,
+  "latency": 7.380235693076762,
+  "n_accepted_tokens": 0.0,
+  "n_generated_tokens": 148.76829268292684
+}
