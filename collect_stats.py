@@ -36,10 +36,9 @@ def main():
         )
 
         for m in metrics.metrics[1:]: # ignore the first warm-up run
-            print(len(m.time_per_chunk), len(m.chunks), m.n_generated_tokens)
             res.ttft += m.time_per_chunk[0]
             res.tpot += np.mean(m.time_per_chunk).item()
-            res.latency += m.total_time / m.n_generated_tokens
+            res.latency += m.total_time
             res.n_generated_tokens += m.n_generated_tokens
             res.n_accepted_tokens += np.sum(m.n_accepted_draft_tokens_per_chunk).item()
 

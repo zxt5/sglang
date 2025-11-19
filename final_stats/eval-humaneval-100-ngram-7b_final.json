@@ -1,0 +1,8 @@
+{
+  "id": "eval-humaneval-100-ngram-7b",
+  "ttft": 0.019832032482798505,
+  "tpot": 0.013062231766739981,
+  "latency": 0.6416109800338745,
+  "n_accepted_tokens": 43.859756097560975,
+  "n_generated_tokens": 91.60365853658537
+}
