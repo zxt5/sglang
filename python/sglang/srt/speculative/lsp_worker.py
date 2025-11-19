@@ -266,9 +266,9 @@ class LSPWorker:
                 batch, logits_output, self.page_size
             )
 
-            if num_accepted_tokens > 0:
-                res_tokens = self.target_tokenizer.decode(next_token_ids[:num_accepted_tokens].tolist())
-                print(f"[LSPWorker] next {num_accepted_tokens} tokens: {res_tokens}")
+            # if num_accepted_tokens > 0:
+            #     res_tokens = self.target_tokenizer.decode(next_token_ids[:num_accepted_tokens].tolist())
+            #     print(f"[LSPWorker] next {num_accepted_tokens} tokens: {res_tokens}")
 
             # print(f"[LSPWorker] accepted {num_accepted_tokens}/{self.draft_token_num} drafts")
             # res_tokens = self.target_tokenizer.decode(next_token_ids[0].tolist())

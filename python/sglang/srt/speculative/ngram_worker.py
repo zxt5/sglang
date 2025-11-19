@@ -231,9 +231,9 @@ class NGRAMWorker:
             logits_output, next_token_ids, num_accepted_tokens = verify_input.verify(
                 batch, logits_output, self.page_size
             )
-            if num_accepted_tokens > 0:
-                res_tokens = self.target_tokenizer.decode(next_token_ids[0].tolist())
-                print(f"[NgramWorker] next tokens: {res_tokens}")
+            # if num_accepted_tokens > 0:
+            #     res_tokens = self.target_tokenizer.decode(next_token_ids[0].tolist())
+            #     print(f"[NgramWorker] next tokens: {res_tokens}")
             self._update_ngram_cache(batch)
             batch.forward_mode = ForwardMode.DECODE
 
