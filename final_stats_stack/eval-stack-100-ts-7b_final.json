@@ -1,0 +1,8 @@
+{
+  "id": "eval-stack-100-ts-7b",
+  "ttft": 0.01994182348251343,
+  "tpot": 0.013157207391140482,
+  "latency": 1.2390896892547607,
+  "n_accepted_tokens": 2.75,
+  "n_generated_tokens": 91.76
+}

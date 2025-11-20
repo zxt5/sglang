@@ -1,0 +1,8 @@
+{
+  "id": "eval-stack-300-lsp-ts-32b",
+  "ttft": 0.07113272905349731,
+  "tpot": 0.05411920107816097,
+  "latency": 9.951808779239654,
+  "n_accepted_tokens": 10.24,
+  "n_generated_tokens": 180.7
+}

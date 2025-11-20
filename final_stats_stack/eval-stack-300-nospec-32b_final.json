@@ -1,0 +1,8 @@
+{
+  "id": "eval-stack-300-nospec-32b",
+  "ttft": 0.126131352186203,
+  "tpot": 0.04788707872726914,
+  "latency": 8.844961549043655,
+  "n_accepted_tokens": 0.0,
+  "n_generated_tokens": 179.91
+}

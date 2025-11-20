@@ -72,7 +72,7 @@ def run_once(id: str, prompt: str, max_new_tokens: int) -> Metrics:
 
 def main():
 
-    alg = "nospec" # "lsp" or "lsp-ts" or "ngram" or "nospec" or "ts"
+    alg = "ts" # "lsp" or "lsp-ts" or "ngram" or "nospec" or "ts"
     model = "32b"
 
     metrics_list = MetricsList(metrics=[])
@@ -102,8 +102,8 @@ def main():
         with open(f"stack_results/eval-stack-{max_new_tokens}-{alg}-{model}.json", "w") as f:
             f.write(metrics_list.model_dump_json(indent=2))
 
-    # eval_stack(100)
-    # eval_stack(300)
+    eval_stack(100)
+    eval_stack(300)
 
 
     def eval(max_new_tokens: int):
@@ -119,8 +119,8 @@ def main():
         with open(f"eval_results/eval-humaneval-{max_new_tokens}-{alg}-{model}.json", "w") as f:
             f.write(metrics_list.model_dump_json(indent=2))
 
-    eval(100)
-    eval(300)
+    # eval(100)
+    # eval(300)
 
 
 if __name__ == "__main__":

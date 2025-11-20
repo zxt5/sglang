@@ -1,0 +1,8 @@
+{
+  "id": "eval-stack-100-ngram-7b",
+  "ttft": 0.019711081981658937,
+  "tpot": 0.008528058952621646,
+  "latency": 0.7902845501899719,
+  "n_accepted_tokens": 33.62,
+  "n_generated_tokens": 91.76
+}

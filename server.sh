@@ -13,11 +13,11 @@ python3 -m sglang.launch_server --model-path $model \
         --mem-fraction-static 0.9 \
         --enable-metrics \
         --enable-metrics-for-all-schedulers \
-        --show-time-cost
-        # --speculative-num-draft-tokens 16
-        # --speculative-algorithm NGRAM
-        # --speculative-lsp-lang $lang \
-        # --speculative-lsp-only-lsp
+        --show-time-cost \
+        --speculative-num-draft-tokens 16 \
+        --speculative-algorithm LSP \
+        --speculative-lsp-lang $lang \
+        --speculative-lsp-only-ts
 
 # python3 -m sglang.launch_server --model-path $model \
 #         --host 0.0.0.0 --port 36001 --log-level warning \

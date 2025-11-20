@@ -21,11 +21,11 @@ def collect_stats(stats_file: str) -> MetricsList:
 
 
 def main():
-    os.makedirs("final_stats", exist_ok=True)
+    os.makedirs("final_stats_stack", exist_ok=True)
 
     best_id = dict()
 
-    for path in glob.glob("eval_results/*.json"):
+    for path in glob.glob("stack_results/*.json"):
         metrics = collect_stats(path)
 
         res = FinalMetrics(
@@ -55,7 +55,7 @@ def main():
         res.n_accepted_tokens /= len(metrics.metrics)
         res.n_generated_tokens /= len(metrics.metrics)
 
-        with open(f"final_stats/{res.id}_final.json", "w") as f:
+        with open(f"final_stats_stack/{res.id}_final.json", "w") as f:
             f.write(res.model_dump_json(indent=2))
 
     print("Best IDs per sample:")
